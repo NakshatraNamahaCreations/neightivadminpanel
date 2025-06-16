@@ -1,0 +1,601 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { FaSearch, FaTrash, FaEdit } from "react-icons/fa";
+import { Button, Table, Pagination } from "react-bootstrap";
+
+const ProductsPage = () => {
+  const [products, setProducts] = useState([]);
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    description: "",
+    details: "",
+    amount: "",
+    dimension: "",
+    sku:"",
+    images: [null, null, null, null, null, null, null], // Support up to 7 images
+    existingImages: [], // Store existing image URLs
+  });
+  const [imagePreviews, setImagePreviews] = useState([null, null, null, null, null, null, null]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 7;
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    setFilteredProducts(
+      searchTerm
+        ? products.filter((product) =>
+            product.name.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : products
+    );
+  }, [products, searchTerm]);
+
+const fetchProducts = async () => {
+  try {
+    const response = await axios.get("http://localhost:8011/api/products");
+    const productsData = response.data.map((product) => ({
+      ...product,
+      formattedCreatedDate: new Date(product.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).split("/").join("/"), // Ensure consistent separator
+    }));
+    setProducts(productsData);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
+
+const handleImageChange = (e, index) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Validate file size (20MB = 20 * 1024 * 1024 bytes)
+    if (file.size > 20 * 1024 * 1024) {
+      alert(`File "${file.name}" exceeds the 20MB size limit.`);
+      return;
+    }
+
+    const updatedPreviews = [...imagePreviews];
+    updatedPreviews[index] = URL.createObjectURL(file);
+    setImagePreviews(updatedPreviews);
+
+    const updatedImages = [...newProduct.images];
+    updatedImages[index] = file; // Store File object for new images
+    setNewProduct({ ...newProduct, images: updatedImages });
+  }
+};
+  const handleAddProduct = async () => {
+    if (!newProduct.name || !newProduct.description || !newProduct.amount) {
+      alert("Please fill all required fields (Name, Description, Amount).");
+      return;
+    }
+
+    const validImages = newProduct.images.filter((image) => image instanceof File);
+    if (validImages.length < 1) {
+      alert("Please upload at least one JPEG or PNG image.");
+      return;
+    }
+
+    console.log("Selected images:", validImages.map((file) => ({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    })));
+
+    const formData = new FormData();
+    formData.append("name", newProduct.name);
+    formData.append("description", newProduct.description);
+    formData.append("details", newProduct.details || "");
+    formData.append("amount", newProduct.amount);
+    formData.append("dimension", newProduct.dimension || "");
+    formData.append("sku", newProduct.sku || "");
+
+
+    validImages.forEach((image) => {
+      formData.append("images", image);
+    });
+
+    try {
+      const response = await axios.post("http://localhost:8011/api/products", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (response.data.message) {
+        alert("Product added successfully!");
+        setNewProduct({
+          name: "",
+          description: "",
+          details: "",
+          amount: "",
+          dimension: "",
+          sku:"",
+          images: [null, null, null, null, null, null, null],
+          existingImages: [],
+        });
+        setImagePreviews([null, null, null, null, null, null, null]);
+        fetchProducts();
+        setIsAddingProduct(false);
+      } else {
+        alert("Failed to add product.");
+      }
+    } catch (error) {
+      console.error("Error adding product:", error.response?.data || error);
+      alert(`An error occurred: ${error.response?.data?.error || "Unknown error"}`);
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!newProduct._id) return;
+
+    if (!newProduct.name || !newProduct.description || !newProduct.amount) {
+      alert("Please fill all required fields (Name, Description, Amount).");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("name", newProduct.name);
+    formData.append("description", newProduct.description);
+    formData.append("details", newProduct.details || "");
+    formData.append("amount", newProduct.amount);
+    formData.append("dimension", newProduct.dimension || "");
+      formData.append("sku", newProduct.sku || "");
+
+    // Send existing image URLs
+    if (newProduct.existingImages.length > 0) {
+      formData.append("existingImages", JSON.stringify(newProduct.existingImages));
+    }
+
+    // Send new images
+    const newImages = newProduct.images.filter((img) => img instanceof File);
+    if (newImages.length > 0) {
+      newImages.forEach((img) => formData.append("images", img));
+    }
+
+    try {
+      const response = await axios.put(
+        `http://localhost:8011/api/products/${newProduct._id}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      if (response.data.message) {
+        alert("Product updated successfully!");
+        setNewProduct({
+          name: "",
+          description: "",
+          details: "",
+          amount: "",
+          dimension: "",
+          sku:"",
+          images: [null, null, null, null, null, null, null],
+          existingImages: [],
+        });
+        setImagePreviews([null, null, null, null, null, null, null]);
+        fetchProducts();
+        setIsAddingProduct(false);
+        setIsEditingProduct(false);
+      } else {
+        alert("Failed to update product.");
+      }
+    } catch (error) {
+      console.error("Error updating product:", error.response?.data || error);
+      alert(`An error occurred: ${error.response?.data?.error || "Unknown error"}`);
+    }
+  };
+
+  const handleEditProduct = (productId) => {
+    const productToEdit = products.find((product) => product._id === productId);
+    if (!productToEdit) return;
+
+    // Initialize images array with existing URLs and fill remaining slots with null
+    const updatedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
+    const updatedPreviews = [...productToEdit.images.map((image) => `http://localhost:8011${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
+
+    setNewProduct({
+      ...productToEdit,
+      images: updatedImages,
+      existingImages: productToEdit.images, // Store existing URLs
+    });
+    setImagePreviews(updatedPreviews);
+    setIsAddingProduct(true);
+    setIsEditingProduct(true);
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    try {
+      const response = await axios.delete(`http://localhost:8011/api/products/${productId}`);
+      if (response.data.message) {
+        alert("Product deleted successfully!");
+        fetchProducts();
+      } else {
+        alert("Failed to delete product.");
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("An error occurred while deleting the product.");
+    }
+  };
+
+  const handleRowClick = (product) => {
+    setSelectedProduct(product);
+  };
+
+  const handleBackToTable = () => {
+    setSelectedProduct(null);
+  };
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+
+  return (
+    <div className="container my-4" style={{ maxWidth: "120%", marginLeft: "10%" }}>
+      <div className="row">
+        <div className="col-md-8 mx-auto" style={{ width: "80%" }}>
+          {isAddingProduct ? (
+            <div
+              style={{
+                maxWidth: "1200px",
+                margin: "0 auto",
+                padding: "24px",
+                background: "#fff",
+                borderRadius: "16px",
+                boxShadow: "0 0 20px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "24px" }}>
+                <button
+                  onClick={() => setIsAddingProduct(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "24px",
+                    marginRight: "16px",
+                  }}
+                >
+                  ←
+                </button>
+                <h2 style={{ margin: 0, color: "black" }}>
+                  {isEditingProduct ? "Edit Product" : "Add Product"}
+                </h2>
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+                {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+                  <label
+                    key={index}
+                    htmlFor={`image${index}`}
+                    style={{
+                      width: "120px",
+                      height: "120px",
+                      border: "2px dashed #ccc",
+                      borderRadius: "8px",
+                      backgroundColor: "#f9f9f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {imagePreviews[index] ? (
+                      <img
+                        src={imagePreviews[index]}
+                        alt="Preview"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span style={{ color: "#aaa", fontSize: "14px" }}>+ Add Image</span>
+                    )}
+                    <input
+                      id={`image${index}`}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => handleImageChange(e, index)}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <input
+                  type="text"
+                  placeholder="Product Name"
+                  value={newProduct.name}
+                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                  style={inputStyle}
+                />
+                <textarea
+                  rows={3}
+                  placeholder="Description"
+                  value={newProduct.description}
+                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                  style={{ ...inputStyle, resize: "none" }}
+                />
+                <textarea
+                  rows={3}
+                  placeholder="Details"
+                  value={newProduct.details}
+                  onChange={(e) => setNewProduct({ ...newProduct, details: e.target.value })}
+                  style={{ ...inputStyle, resize: "none" }}
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={newProduct.amount}
+                  onChange={(e) => setNewProduct({ ...newProduct, amount: e.target.value })}
+                  style={inputStyle}
+                />
+                <input
+                  type="text"
+                  placeholder="Dimension (e.g., 10x20x30 cm)"
+                  value={newProduct.dimension}
+                  onChange={(e) => setNewProduct({ ...newProduct, dimension: e.target.value })}
+                  style={inputStyle}
+                />
+                  <input
+                  type="text"
+                  placeholder="SKU Code"
+                  value={newProduct.sku}
+                  onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div style={{ textAlign: "right", marginTop: "24px" }}>
+                <button
+                  onClick={isEditingProduct ? handleUpdateProduct : handleAddProduct}
+                  style={{
+                    backgroundColor: "#00614A",
+                    color: "#fff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: "6px",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isEditingProduct ? "Update Product" : "Add Product"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", marginTop: "2%", position: "relative" }}>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    style={{ padding: "5px 10px 5px 30px", width: "250px" }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <i
+                    className="fa fa-search"
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                    }}
+                  ></i>
+                </div>
+                <div style={{ marginLeft: "auto" }}>
+                  <button
+                    onClick={() => setIsAddingProduct(true)}
+                    style={{ padding: "5px 10px", cursor: "pointer" }}
+                  >
+                    + Add Product
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                {!selectedProduct && (
+                  <>
+                    <Table striped bordered hover responsive className="product-table shadow-sm" style={{marginTop:'2%'}}>
+                      <thead style={{ textAlign: "center" }}>
+                        <tr>
+                          <th>Sl.no</th>
+                          <th>Product Name</th>   
+                          <th>Amount</th>
+                          <th>Actions</th>      
+                        </tr> 
+                      </thead>  
+                      <tbody> 
+                        {currentProducts.map((product, index) => (
+                          <tr key={product._id} style={{ cursor: "pointer", textAlign:'center' }}>
+                            <td>{indexOfFirstItem + index + 1}</td>
+                            <td onClick={() => handleRowClick(product)}>{product.name}</td>
+                           <td onClick={() => handleRowClick(product)}>
+  {product.amount}
+</td>
+                            <td>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+                                <FaEdit
+                                  style={{ cursor: "pointer", marginRight: "5px" }}
+                                  onClick={() => handleEditProduct(product._id)}
+                                />
+                                <FaTrash
+                                  style={{ cursor: "pointer", color: "red" }}
+                                  onClick={() => handleDeleteProduct(product._id)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+
+                    <Pagination className="justify-content-center">
+                      <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
+                      <Pagination.Prev
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      />
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <Pagination.Item
+                          key={i + 1}
+                          active={i + 1 === currentPage}
+                          onClick={() => setCurrentPage(i + 1)}
+                        >
+                          {i + 1}
+                        </Pagination.Item>
+                      ))}
+                      <Pagination.Next
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      />
+                      <Pagination.Last
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      />
+                    </Pagination>
+                  </>
+                )}
+
+                {selectedProduct && (
+                  <div>
+                    <button
+                      onClick={handleBackToTable}
+                      style={{
+                        padding: "10px",
+                        backgroundColor: "transparent",
+                        color: "#333",
+                        border: "none",
+                        borderRadius: "50%",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                      aria-label="Back"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="40"
+                        height="40"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />
+                      </svg>
+                    </button>
+                    <div
+                      style={{
+                        padding: "20px",
+                        border: "1px solid #ddd",
+                        borderRadius: "8px",
+                        maxWidth: "900px",
+                        margin: "0 auto",
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
+                        {selectedProduct.images &&
+                          selectedProduct.images.map((image, index) => {
+                            const fullImageUrl = `http://localhost:8011${image}`;
+                            return (
+                              <div
+                                key={index}
+                                style={{
+                                  width: "120px",
+                                  height: "120px",
+                                  border: "1px solid #ccc",
+                                  borderRadius: "8px",
+                                  overflow: "hidden",
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  backgroundColor: "#f9f9f9",
+                                }}
+                              >
+                                <img
+                                  src={fullImageUrl}
+                                  alt={`Product ${index}`}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "15px",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "10px 20px",
+                            border: "1px solid #ddd",
+                            borderRadius: "20px",
+                            backgroundColor: "#f9f9f9",
+                          }}
+                        >
+                          <strong>Amount:</strong> ₹{selectedProduct.amount}
+                        </div>
+                        <div
+                          style={{
+                            padding: "10px 20px",
+                            border: "1px solid #ddd",
+                            borderRadius: "20px",
+                            backgroundColor: "#f9f9f9",
+                          }}
+                        >
+                          <strong>Dimension:</strong> {selectedProduct.dimension || "N/A"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3>Description</h3>
+                        <p style={{ lineHeight: "1.6", color: "#555" }}>
+                          {selectedProduct.description}
+                        </p>
+                      </div>
+                      <div>
+                        <h3>Details</h3>
+                        <p style={{ lineHeight: "1.6", color: "#555" }}>
+                          {selectedProduct.details || "No additional details provided."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const inputStyle = {
+  padding: "10px",
+  border: "1px solid #ccc",
+  borderRadius: "6px",
+  fontSize: "14px",
+  width: "100%",
+};
+
+export default ProductsPage;
