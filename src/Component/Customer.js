@@ -12,7 +12,7 @@ function Customer() {
   // Fetch customers from API
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('http://localhost:8011/api/customers/all');
+      const response = await fetch('https://api.neightivglobal.com/api/customers/all');
       if (!response.ok) throw new Error('Failed to fetch customers');
       
       const data = await response.json();
@@ -44,7 +44,7 @@ function Customer() {
   // Delete Customer Function
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8011/api/customers/delete/${id}`, {
+      const response = await fetch(`https://api.neightivglobal.com/api/customers/delete/${id}`, {
         method: 'DELETE',
       });
 

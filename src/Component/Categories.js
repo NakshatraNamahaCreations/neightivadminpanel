@@ -43,7 +43,7 @@ function Categories() {
     }
     
     try {
-        const response = await axios.post('http://localhost:8011/api/categories', {
+        const response = await axios.post('https://api.neightivglobal.com/api/categories', {
             category: newCategoryName,
             status: newStatus
         });
@@ -62,7 +62,7 @@ function Categories() {
   
 const fetchCategories = async () => {
   try {
-      const response = await axios.get("http://localhost:8011/api/categories");
+      const response = await axios.get("https://api.neightivglobal.com/api/categories");
       setCategories(response.data || []);  
   } catch (error) {
       console.error("Error fetching categories:", error);
@@ -90,7 +90,7 @@ const handleUpdateCategory = async () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:8011/api/categories/${editCategory._id}`, {
+    const response = await fetch(`https://api.neightivglobal.com/api/categories/${editCategory._id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -122,7 +122,7 @@ const handleUpdateCategory = async () => {
 
 const handleDeleteCategory = async (categoryId) => {
   try {
-    const response = await fetch(`http://localhost:8011/api/categories/${categoryId}`, {
+    const response = await fetch(`https://api.neightivglobal.com/api/categories/${categoryId}`, {
       method: 'DELETE',
     });
 

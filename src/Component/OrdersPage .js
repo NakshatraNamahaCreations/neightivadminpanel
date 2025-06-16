@@ -12,7 +12,7 @@ const OrdersPage = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch("http://localhost:8011/api/orders");
+        const response = await fetch("https://api.neightivglobal.com/api/orders");
         if (!response.ok) {
           throw new Error(`Error: ${response.status} - ${response.statusText}`);
         }
@@ -63,7 +63,7 @@ const handleEditClick = (order) => {
 
   try {
     const response = await fetch(
-      `http://localhost:8011/api/orders/${selectedOrder._id}`,
+      `https://api.neightivglobal.com/api/orders/${selectedOrder._id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

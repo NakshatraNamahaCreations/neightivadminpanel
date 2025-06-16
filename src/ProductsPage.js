@@ -40,7 +40,7 @@ const ProductsPage = () => {
 
 const fetchProducts = async () => {
   try {
-    const response = await axios.get("http://localhost:8011/api/products");
+    const response = await axios.get("https://api.neightivglobal.com/api/products");
     const productsData = response.data.map((product) => ({
       ...product,
       formattedCreatedDate: new Date(product.createdAt).toLocaleDateString("en-IN", {
@@ -105,7 +105,7 @@ const handleImageChange = (e, index) => {
     });
 
     try {
-      const response = await axios.post("http://localhost:8011/api/products", formData, {
+      const response = await axios.post("https://api.neightivglobal.com/api/products", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (response.data.message) {
@@ -161,7 +161,7 @@ const handleImageChange = (e, index) => {
 
     try {
       const response = await axios.put(
-        `http://localhost:8011/api/products/${newProduct._id}`,
+        `https://api.neightivglobal.com/api/products/${newProduct._id}`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -199,7 +199,7 @@ const handleImageChange = (e, index) => {
 
     // Initialize images array with existing URLs and fill remaining slots with null
     const updatedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
-    const updatedPreviews = [...productToEdit.images.map((image) => `http://localhost:8011${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
+    const updatedPreviews = [...productToEdit.images.map((image) => `https://api.neightivglobal.com${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
 
     setNewProduct({
       ...productToEdit,
@@ -213,7 +213,7 @@ const handleImageChange = (e, index) => {
 
   const handleDeleteProduct = async (productId) => {
     try {
-      const response = await axios.delete(`http://localhost:8011/api/products/${productId}`);
+      const response = await axios.delete(`https://api.neightivglobal.com/api/products/${productId}`);
       if (response.data.message) {
         alert("Product deleted successfully!");
         fetchProducts();
@@ -506,7 +506,7 @@ const handleImageChange = (e, index) => {
                       <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
                         {selectedProduct.images &&
                           selectedProduct.images.map((image, index) => {
-                            const fullImageUrl = `http://localhost:8011${image}`;
+                            const fullImageUrl = `https://api.neightivglobal.com${image}`;
                             return (
                               <div
                                 key={index}
