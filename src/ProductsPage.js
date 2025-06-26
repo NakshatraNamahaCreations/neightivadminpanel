@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaSearch, FaTrash, FaEdit } from "react-icons/fa";
+import { FaSearch, FaTrash, FaEdit, FaTimes } from "react-icons/fa";
 import { Button, Table, Pagination } from "react-bootstrap";
 
 const ProductsPage = () => {
@@ -11,9 +11,10 @@ const ProductsPage = () => {
     details: "",
     amount: "",
     dimension: "",
-    sku:"",
+    sku: "",
     images: [null, null, null, null, null, null, null], // Support up to 7 images
     existingImages: [], // Store existing image URLs
+    imagesToDelete: [], // Track images to delete
   });
   const [imagePreviews, setImagePreviews] = useState([null, null, null, null, null, null, null]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,41 +39,66 @@ const ProductsPage = () => {
     );
   }, [products, searchTerm]);
 
-const fetchProducts = async () => {
-  try {
-    const response = await axios.get("https://api.neightivglobal.com/api/products");
-    const productsData = response.data.map((product) => ({
-      ...product,
-      formattedCreatedDate: new Date(product.createdAt).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).split("/").join("/"), // Ensure consistent separator
-    }));
-    setProducts(productsData);
-  } catch (error) {
-    console.error("Error fetching products:", error);
-  }
-};
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get("https://api.neightivglobal.com/api/products");
+      const productsData = response.data.map((product) => ({
+        ...product,
+        formattedCreatedDate: new Date(product.createdAt).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).split("/").join("/"),
+      }));
+      setProducts(productsData);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
-const handleImageChange = (e, index) => {
-  const file = e.target.files[0];
-  if (file) {
-    // Validate file size (20MB = 20 * 1024 * 1024 bytes)
-    if (file.size > 20 * 1024 * 1024) {
-      alert(`File "${file.name}" exceeds the 20MB size limit.`);
-      return;
+  const handleImageChange = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB per file limit
+        alert(`File "${file.name}" exceeds the 10MB size limit.`);
+        return;
+      }
+
+      const updatedPreviews = [...imagePreviews];
+      updatedPreviews[index] = URL.createObjectURL(file);
+      setImagePreviews(updatedPreviews);
+
+      const updatedImages = [...newProduct.images];
+      updatedImages[index] = file; // Store File object for new images
+      setNewProduct({ ...newProduct, images: updatedImages });
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    const updatedPreviews = [...imagePreviews];
+    const updatedImages = [...newProduct.images];
+    const updatedExistingImages = [...newProduct.existingImages];
+    const updatedImagesToDelete = [...newProduct.imagesToDelete];
+
+    // If the image is an existing one (URL string), add it to imagesToDelete
+    if (updatedImages[index] && typeof updatedImages[index] === "string") {
+      updatedImagesToDelete.push(updatedImages[index]);
+      updatedExistingImages.splice(updatedExistingImages.indexOf(updatedImages[index]), 1);
     }
 
-    const updatedPreviews = [...imagePreviews];
-    updatedPreviews[index] = URL.createObjectURL(file);
-    setImagePreviews(updatedPreviews);
+    // Clear the image and preview
+    updatedPreviews[index] = null;
+    updatedImages[index] = null;
 
-    const updatedImages = [...newProduct.images];
-    updatedImages[index] = file; // Store File object for new images
-    setNewProduct({ ...newProduct, images: updatedImages });
-  }
-};
+    setImagePreviews(updatedPreviews);
+    setNewProduct({
+      ...newProduct,
+      images: updatedImages,
+      existingImages: updatedExistingImages,
+      imagesToDelete: updatedImagesToDelete,
+    });
+  };
+
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.description || !newProduct.amount) {
       alert("Please fill all required fields (Name, Description, Amount).");
@@ -85,11 +111,11 @@ const handleImageChange = (e, index) => {
       return;
     }
 
-    console.log("Selected images:", validImages.map((file) => ({
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    })));
+    const totalSize = validImages.reduce((sum, image) => sum + image.size, 0);
+    if (totalSize > 100 * 1024 * 1024) { // 100MB total limit
+      alert("Total image size exceeds 100MB. Please upload smaller or fewer images.");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("name", newProduct.name);
@@ -98,7 +124,6 @@ const handleImageChange = (e, index) => {
     formData.append("amount", newProduct.amount);
     formData.append("dimension", newProduct.dimension || "");
     formData.append("sku", newProduct.sku || "");
-
 
     validImages.forEach((image) => {
       formData.append("images", image);
@@ -116,9 +141,10 @@ const handleImageChange = (e, index) => {
           details: "",
           amount: "",
           dimension: "",
-          sku:"",
+          sku: "",
           images: [null, null, null, null, null, null, null],
           existingImages: [],
+          imagesToDelete: [],
         });
         setImagePreviews([null, null, null, null, null, null, null]);
         fetchProducts();
@@ -140,23 +166,31 @@ const handleImageChange = (e, index) => {
       return;
     }
 
+    const validImages = newProduct.images.filter((img) => img instanceof File);
+    const totalSize = validImages.reduce((sum, image) => sum + image.size, 0);
+    if (totalSize > 100 * 1024 * 1024) { // 100MB total limit
+      alert("Total image size exceeds 100MB. Please upload smaller or fewer images.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("name", newProduct.name);
     formData.append("description", newProduct.description);
     formData.append("details", newProduct.details || "");
     formData.append("amount", newProduct.amount);
     formData.append("dimension", newProduct.dimension || "");
-      formData.append("sku", newProduct.sku || "");
+    formData.append("sku", newProduct.sku || "");
 
-    // Send existing image URLs
     if (newProduct.existingImages.length > 0) {
       formData.append("existingImages", JSON.stringify(newProduct.existingImages));
     }
 
-    // Send new images
-    const newImages = newProduct.images.filter((img) => img instanceof File);
-    if (newImages.length > 0) {
-      newImages.forEach((img) => formData.append("images", img));
+    if (newProduct.imagesToDelete.length > 0) {
+      formData.append("imagesToDelete", JSON.stringify(newProduct.imagesToDelete));
+    }
+
+    if (validImages.length > 0) {
+      validImages.forEach((img) => formData.append("images", img));
     }
 
     try {
@@ -176,9 +210,10 @@ const handleImageChange = (e, index) => {
           details: "",
           amount: "",
           dimension: "",
-          sku:"",
+          sku: "",
           images: [null, null, null, null, null, null, null],
           existingImages: [],
+          imagesToDelete: [],
         });
         setImagePreviews([null, null, null, null, null, null, null]);
         fetchProducts();
@@ -197,14 +232,14 @@ const handleImageChange = (e, index) => {
     const productToEdit = products.find((product) => product._id === productId);
     if (!productToEdit) return;
 
-    // Initialize images array with existing URLs and fill remaining slots with null
     const updatedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
     const updatedPreviews = [...productToEdit.images.map((image) => `https://api.neightivglobal.com${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
 
     setNewProduct({
       ...productToEdit,
       images: updatedImages,
-      existingImages: productToEdit.images, // Store existing URLs
+      existingImages: productToEdit.images,
+      imagesToDelete: [],
     });
     setImagePreviews(updatedPreviews);
     setIsAddingProduct(true);
@@ -256,7 +291,22 @@ const handleImageChange = (e, index) => {
             >
               <div style={{ display: "flex", alignItems: "center", marginBottom: "24px" }}>
                 <button
-                  onClick={() => setIsAddingProduct(false)}
+                  onClick={() => {
+                    setIsAddingProduct(false);
+                    setIsEditingProduct(false);
+                    setNewProduct({
+                      name: "",
+                      description: "",
+                      details: "",
+                      amount: "",
+                      dimension: "",
+                      sku: "",
+                      images: [null, null, null, null, null, null, null],
+                      existingImages: [],
+                      imagesToDelete: [],
+                    });
+                    setImagePreviews([null, null, null, null, null, null, null]);
+                  }}
                   style={{
                     background: "none",
                     border: "none",
@@ -274,39 +324,63 @@ const handleImageChange = (e, index) => {
 
               <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
                 {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-                  <label
-                    key={index}
-                    htmlFor={`image${index}`}
-                    style={{
-                      width: "120px",
-                      height: "120px",
-                      border: "2px dashed #ccc",
-                      borderRadius: "8px",
-                      backgroundColor: "#f9f9f9",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {imagePreviews[index] ? (
-                      <img
-                        src={imagePreviews[index]}
-                        alt="Preview"
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  <div key={index} style={{ position: "relative" }}>
+                    <label
+                      htmlFor={`image${index}`}
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        border: "2px dashed #ccc",
+                        borderRadius: "8px",
+                        backgroundColor: "#f9f9f9",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {imagePreviews[index] ? (
+                        <img
+                          src={imagePreviews[index]}
+                          alt="Preview"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span style={{ color: "#aaa", fontSize: "14px" }}>+ Add Image</span>
+                      )}
+                      <input
+                        id={`image${index}`}
+                        type="file"
+                        accept="image/*"
+                      // annotation: true
+                        style={{ display: "none" }}
+                        onChange={(e) => handleImageChange(e, index)}
                       />
-                    ) : (
-                      <span style={{ color: "#aaa", fontSize: "14px" }}>+ Add Image</span>
+                    </label>
+                    {imagePreviews[index] && (
+                      <button
+                        onClick={() => handleRemoveImage(index)}
+                        style={{
+                          position: "absolute",
+                          top: "5px",
+                          right: "5px",
+                          background: "rgba(0,0,0,0.6)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "24px",
+                          height: "24px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <FaTimes size={14} />
+                      </button>
                     )}
-                    <input
-                      id={`image${index}`}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => handleImageChange(e, index)}
-                    />
-                  </label>
+                  </div>
                 ))}
               </div>
 
@@ -346,7 +420,7 @@ const handleImageChange = (e, index) => {
                   onChange={(e) => setNewProduct({ ...newProduct, dimension: e.target.value })}
                   style={inputStyle}
                 />
-                  <input
+                <input
                   type="text"
                   placeholder="SKU Code"
                   value={newProduct.sku}
@@ -406,23 +480,21 @@ const handleImageChange = (e, index) => {
               <div>
                 {!selectedProduct && (
                   <>
-                    <Table striped bordered hover responsive className="product-table shadow-sm" style={{marginTop:'2%'}}>
+                    <Table striped bordered hover responsive className="product-table shadow-sm" style={{ marginTop: "2%" }}>
                       <thead style={{ textAlign: "center" }}>
                         <tr>
                           <th>Sl.no</th>
-                          <th>Product Name</th>   
+                          <th>Product Name</th>
                           <th>Amount</th>
-                          <th>Actions</th>      
-                        </tr> 
-                      </thead>  
-                      <tbody> 
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {currentProducts.map((product, index) => (
-                          <tr key={product._id} style={{ cursor: "pointer", textAlign:'center' }}>
+                          <tr key={product._id} style={{ cursor: "pointer", textAlign: "center" }}>
                             <td>{indexOfFirstItem + index + 1}</td>
                             <td onClick={() => handleRowClick(product)}>{product.name}</td>
-                           <td onClick={() => handleRowClick(product)}>
-  {product.amount}
-</td>
+                            <td onClick={() => handleRowClick(product)}>{product.amount}</td>
                             <td>
                               <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
                                 <FaEdit

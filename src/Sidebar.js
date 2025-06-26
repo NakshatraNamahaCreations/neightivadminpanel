@@ -23,6 +23,8 @@ export default function Sidebar() {
     // { name: "Inventory", path: "/inventory", icon: <FaWarehouse /> },
     { name: "Orders", path: "/orders", icon: <FaShoppingCart /> },
     { name: "Customers", path: "/customers", icon: <FaUsers /> },
+    { name: "TrackingDHL", path: "/tracking", icon: <FaShoppingCart /> },
+
 
   ];
   
