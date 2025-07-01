@@ -56,23 +56,110 @@ const ProductsPage = () => {
     }
   };
 
-  const handleImageChange = (e, index) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB per file limit
-        alert(`File "${file.name}" exceeds the 10MB size limit.`);
-        return;
+  // const handleImageChange = (e, index) => {
+  //   const file = e.target.files[0];
+  //   if (file) {
+  //     if (file.size > 10 * 1024 * 1024) { // 10MB per file limit
+  //       alert(`File "${file.name}" exceeds the 10MB size limit.`);
+  //       return;
+  //     }
+
+  //     const updatedPreviews = [...imagePreviews];
+  //     updatedPreviews[index] = URL.createObjectURL(file);
+  //     setImagePreviews(updatedPreviews);
+
+  //     const updatedImages = [...newProduct.images];
+  //     updatedImages[index] = file; // Store File object for new images
+  //     setNewProduct({ ...newProduct, images: updatedImages });
+  //   }
+  // };
+
+
+//   const handleImageChange = (e, index) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
+
+//   if (file.size > 10 * 1024 * 1024) {
+//     alert(`File "${file.name}" exceeds the 10MB limit.`);
+//     return;
+//   }
+
+//   const updatedPreviews = [...imagePreviews];
+//   updatedPreviews[index] = URL.createObjectURL(file);
+//   setImagePreviews(updatedPreviews);
+
+//   const updatedImages = [...newProduct.images];
+
+//   // If the previous image at this index was a URL string, mark it for deletion
+//   if (typeof updatedImages[index] === 'string') {
+//     const updatedImagesToDelete = [...newProduct.imagesToDelete];
+//     if (!updatedImagesToDelete.includes(updatedImages[index])) {
+//       updatedImagesToDelete.push(updatedImages[index]);
+//     }
+
+//     const updatedExistingImages = newProduct.existingImages.filter(
+//       (img) => img !== updatedImages[index]
+//     );
+
+//     setNewProduct({
+//       ...newProduct,
+//       images: Object.assign([], updatedImages, { [index]: file }),
+//       existingImages: updatedExistingImages,
+//       imagesToDelete: updatedImagesToDelete,
+//     });
+//   } else {
+//     updatedImages[index] = file;
+//     setNewProduct({
+//       ...newProduct,
+//       images: updatedImages,
+//     });
+//   }
+// };
+
+
+const handleImageChange = (e, index) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert(`File "${file.name}" exceeds the 10MB limit.`);
+    return;
+  }
+
+  // Create new arrays for previews and images
+  const updatedPreviews = [...imagePreviews];
+  const updatedImages = [...newProduct.images];
+  const updatedImagesToDelete = [...newProduct.imagesToDelete];
+  const updatedExistingImages = [...newProduct.existingImages];
+
+  // If there was a previous image at this index
+  if (updatedImages[index]) {
+    // If it was an existing image (URL string), mark it for deletion
+    if (typeof updatedImages[index] === 'string') {
+      if (!updatedImagesToDelete.includes(updatedImages[index])) {
+        updatedImagesToDelete.push(updatedImages[index]);
       }
-
-      const updatedPreviews = [...imagePreviews];
-      updatedPreviews[index] = URL.createObjectURL(file);
-      setImagePreviews(updatedPreviews);
-
-      const updatedImages = [...newProduct.images];
-      updatedImages[index] = file; // Store File object for new images
-      setNewProduct({ ...newProduct, images: updatedImages });
+      // Remove from existing images
+      const existingIndex = updatedExistingImages.indexOf(updatedImages[index]);
+      if (existingIndex >= 0) {
+        updatedExistingImages.splice(existingIndex, 1);
+      }
     }
-  };
+  }
+
+  // Update the preview and image at the specific index
+  updatedPreviews[index] = URL.createObjectURL(file);
+  updatedImages[index] = file;
+
+  setImagePreviews(updatedPreviews);
+  setNewProduct({
+    ...newProduct,
+    images: updatedImages,
+    existingImages: updatedExistingImages,
+    imagesToDelete: updatedImagesToDelete,
+  });
+};
+
 
   const handleRemoveImage = (index) => {
     const updatedPreviews = [...imagePreviews];
@@ -181,18 +268,19 @@ const ProductsPage = () => {
     formData.append("dimension", newProduct.dimension || "");
     formData.append("sku", newProduct.sku || "");
 
-    if (newProduct.existingImages.length > 0) {
-      formData.append("existingImages", JSON.stringify(newProduct.existingImages));
-    }
+  formData.append("existingImages", JSON.stringify(newProduct.images.map(img => 
+    typeof img === 'string' ? img : null
+  )));
 
     if (newProduct.imagesToDelete.length > 0) {
       formData.append("imagesToDelete", JSON.stringify(newProduct.imagesToDelete));
     }
 
-    if (validImages.length > 0) {
-      validImages.forEach((img) => formData.append("images", img));
+ newProduct.images.forEach((img, index) => {
+    if (img instanceof File) {
+      formData.append(`images`, img);
     }
-
+  });
     try {
       const response = await axios.put(
         `https://api.neightivglobal.com/api/products/${newProduct._id}`,
@@ -228,23 +316,73 @@ const ProductsPage = () => {
     }
   };
 
-  const handleEditProduct = (productId) => {
-    const productToEdit = products.find((product) => product._id === productId);
-    if (!productToEdit) return;
+  // const handleEditProduct = (productId) => {
+  //   const productToEdit = products.find((product) => product._id === productId);
+  //   if (!productToEdit) return;
 
-    const updatedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
-    const updatedPreviews = [...productToEdit.images.map((image) => `https://api.neightivglobal.com${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
+  //   const updatedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
+  //   const updatedPreviews = [...productToEdit.images.map((image) => `https://api.neightivglobal.com${image}`), ...Array(7 - productToEdit.images.length).fill(null)];
 
-    setNewProduct({
-      ...productToEdit,
-      images: updatedImages,
-      existingImages: productToEdit.images,
-      imagesToDelete: [],
-    });
-    setImagePreviews(updatedPreviews);
-    setIsAddingProduct(true);
-    setIsEditingProduct(true);
-  };
+  //   setNewProduct({
+  //     ...productToEdit,
+  //     images: updatedImages,
+  //     existingImages: productToEdit.images,
+  //     imagesToDelete: [],
+  //   });
+  //   setImagePreviews(updatedPreviews);
+  //   setIsAddingProduct(true);
+  //   setIsEditingProduct(true);
+  // };
+
+//   const handleEditProduct = (productId) => {
+//   const productToEdit = products.find((product) => product._id === productId);
+//   if (!productToEdit) return;
+
+//   const paddedImages = [...productToEdit.images, ...Array(7 - productToEdit.images.length).fill(null)];
+
+//   setNewProduct({
+//     ...productToEdit,
+//     images: paddedImages,
+//     existingImages: [...productToEdit.images],
+//     imagesToDelete: [],
+//   });
+
+//   setImagePreviews(
+//     paddedImages.map((img) => (img ? `https://api.neightivglobal.com${img}` : null))
+//   );
+
+//   setIsAddingProduct(true);
+//   setIsEditingProduct(true);
+// };
+
+
+ const handleEditProduct = (productId) => {
+  const productToEdit = products.find((product) => product._id === productId);
+  if (!productToEdit) return;
+
+  // Create padded images array with null for empty slots
+  const paddedImages = [...productToEdit.images];
+  while (paddedImages.length < 7) {
+    paddedImages.push(null);
+  }
+
+  setNewProduct({
+    ...productToEdit,
+    images: paddedImages,
+    existingImages: [...productToEdit.images],
+    imagesToDelete: [],
+  });
+
+  // Create previews - existing images get URLs, others remain null
+  const previews = paddedImages.map((img) => 
+    img ? `https://api.neightivglobal.com${img}` : null
+  );
+
+  setImagePreviews(previews);
+  setIsAddingProduct(true);
+  setIsEditingProduct(true);
+};
+
 
   const handleDeleteProduct = async (productId) => {
     try {
