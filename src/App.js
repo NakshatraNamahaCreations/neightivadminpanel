@@ -12,7 +12,7 @@ import Customer from "./Component/Customer";
 import Login from "./Component/Login";
 import ContactPage from "./Component/Contactpage";
 import Blogs from "./Component/Blogs";
-import TrackingPage from "./Component/TrackingPage";
+import AdminPDFs from "./Component/AdminPDFs";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("authToken"));
@@ -61,7 +61,7 @@ function MainLayout({ isAuthenticated }) {
           <Route path="/contactpage" element={isAuthenticated ? <ContactPage /> : <Navigate to="/" />} />
           <Route path="/blog" element={isAuthenticated ? <Blogs /> : <Navigate to="/" />} />
 
-          <Route path="/tracking" element={isAuthenticated ? <TrackingPage /> : <Navigate to="/" />} />
+          <Route path="/tracking" element={isAuthenticated ? <AdminPDFs /> : <Navigate to="/" />} />
 
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />
         </Routes>
