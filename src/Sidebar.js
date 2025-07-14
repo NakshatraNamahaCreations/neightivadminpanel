@@ -20,7 +20,7 @@ export default function Sidebar() {
     { name: "Dashboard", path: "/dashboard", icon: <FaTachometerAlt /> },
     { name: "Products", path: "/products", icon: <FaBoxOpen /> },
     // { name: "Categories", path: "/categories", icon: <FaList /> },
-    // { name: "Inventory", path: "/inventory", icon: <FaWarehouse /> },
+    { name: "Inventory", path: "/inventory", icon: <FaWarehouse /> },
     { name: "Orders", path: "/orders", icon: <FaShoppingCart /> },
     { name: "Customers", path: "/customers", icon: <FaUsers /> },
     { name: "TrackingDHL", path: "/tracking", icon: <FaShoppingCart /> },

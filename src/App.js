@@ -13,6 +13,7 @@ import Login from "./Component/Login";
 import ContactPage from "./Component/Contactpage";
 import Blogs from "./Component/Blogs";
 import AdminPDFs from "./Component/AdminPDFs";
+import InventoryPage from "./InventoryPage";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("authToken"));
@@ -55,11 +56,13 @@ function MainLayout({ isAuthenticated }) {
           <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/" />} />
           <Route path="/products" element={isAuthenticated ? <ProductsPage /> : <Navigate to="/" />} />
           <Route path="/categories" element={isAuthenticated ? <Categories /> : <Navigate to="/" />} />
-          <Route path="/inventory" element={isAuthenticated ? <Inventory /> : <Navigate to="/" />} />
+          {/* <Route path="/inventory" element={isAuthenticated ? <Inventory /> : <Navigate to="/" />} /> */}
           <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/" />} />
           <Route path="/customers" element={isAuthenticated ? <Customer /> : <Navigate to="/" />} />
           <Route path="/contactpage" element={isAuthenticated ? <ContactPage /> : <Navigate to="/" />} />
           <Route path="/blog" element={isAuthenticated ? <Blogs /> : <Navigate to="/" />} />
+          <Route path="/inventory" element={isAuthenticated ? <InventoryPage /> : <Navigate to="/" />} />
+
 
           <Route path="/tracking" element={isAuthenticated ? <AdminPDFs /> : <Navigate to="/" />} />
 

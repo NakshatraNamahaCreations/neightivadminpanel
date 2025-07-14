@@ -10,40 +10,43 @@ const OrdersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const itemsPerPage = 10;
+  const itemsPerPage = 8;
 
   // Fetch orders from API
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch("https://api.neightivglobal.com/api/shiprocket/orders", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-       
-          },
-        });
+// Fetch orders from API
+useEffect(() => {
+  const fetchOrders = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("https://api.neightivglobal.com/api/shiprocket/orders", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status} - ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        // Ensure data is an array; adjust if API wraps it (e.g., data.orders)
-        const ordersArray = Array.isArray(data) ? data : data.orders || [];
-        setOrders(ordersArray);
-      } catch (err) {
-        setError(`Failed to fetch orders: ${err.message}`);
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
       }
-    };
 
-    fetchOrders();
-  }, []);
+      const data = await response.json();
+      // Ensure data is an array; adjust if API wraps it (e.g., data.orders)
+      const ordersArray = Array.isArray(data) ? data : data.orders || [];
+      // Filter the orders to only show completed ones
+      const completedOrders = ordersArray.filter(order => order.status === "completed");
+      setOrders(completedOrders.reverse());
+    } catch (err) {
+      setError(`Failed to fetch orders: ${err.message}`);
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchOrders();
+}, []);
+
 
   // Pagination logic
   const totalPages = Math.ceil(orders.length / itemsPerPage);
@@ -129,7 +132,7 @@ const OrdersPage = () => {
               <Table bordered hover responsive className="shadow-sm" >
                 <thead className="bg-light">
                   <tr className="text-center">
-                    <th>#</th>
+                    <th>Sl.no</th>
                     <th>Customer</th>
                     <th>Amount (₹)</th>
                     <th>Status</th>
@@ -155,7 +158,7 @@ const OrdersPage = () => {
                           size="sm"
                           onClick={() => handleEditClick(order)}
                         >
-                          Edit
+                          View
                         </Button>
                       </td>
                     </tr>
